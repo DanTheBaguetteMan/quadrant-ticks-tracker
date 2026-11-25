@@ -122,11 +122,24 @@ main { max-width: 1480px; margin: 0 auto; padding: 20px; }
 .quad[data-q="2"] { --qc: var(--q2); }
 .quad[data-q="3"] { --qc: var(--q3); }
 .quad[data-q="4"] { --qc: var(--q4); }
-.quad h2 {
-  margin: 0 0 10px; font-size: 1rem; font-weight: 700; color: var(--qc);
-  display: flex; justify-content: space-between; align-items: baseline;
+.qhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 10px; }
+.qhead h2 { margin: 0; flex: 1 1 8rem; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.qhead .dev-label { font-size: 0.72rem; font-weight: 500; color: var(--ink-soft); white-space: nowrap; }
+.qhead .dev-id {
+  font: inherit; font-size: 1rem; font-weight: 700; color: var(--qc); font-variant-numeric: tabular-nums;
+  background: transparent; border: 0; border-bottom: 1px dashed var(--field-line); border-radius: 0;
+  padding: 2px 2px; width: 100%; min-width: 0; max-width: 9rem;
 }
-.quad h2 .filled { font-size: 0.78rem; font-weight: 500; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.qhead .dev-id::placeholder { color: var(--qc); opacity: 0.6; }
+.qhead .dev-id:hover { border-bottom-color: var(--qc); }
+.qhead .filled { font-size: 0.78rem; font-weight: 500; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.mode { display: inline-flex; border: 1px solid var(--field-line); border-radius: 999px; overflow: hidden; flex: 0 0 auto; }
+.mode button {
+  font: inherit; font-size: 0.78rem; font-weight: 600; background: var(--field); color: var(--ink-soft);
+  border: 0; padding: 4px 11px; cursor: pointer;
+}
+.mode button + button { border-left: 1px solid var(--field-line); }
+.mode button[aria-pressed="true"] { background: var(--qc); color: var(--surface); }
 .corners {
   display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
   border: 1px dashed var(--line); border-radius: 8px;
@@ -219,7 +232,7 @@ main { max-width: 1480px; margin: 0 auto; padding: 20px; }
     <label for="notes">Notes</label>
     <textarea id="notes" placeholder="Optional"></textarea>
   </div>
-  <p class="hint">Each corner has four boxes laid out the way they point: up on top, down below, left and right on the sides. Leave a box empty to skip it. Your unsaved entry is kept in this browser until you save or clear it.</p>
+  <p class="hint">Each corner has four boxes laid out the way they point: up on top, down below, left and right on the sides. Leave a box empty to skip it. Device IDs and the Misaligned/Anchor setting are for reference on screen only; they stay put between entries and aren’t sent to Notion. Your unsaved entry is kept in this browser until you save or clear it.</p>
 </main>
 
 <script>
@@ -245,6 +258,13 @@ main { max-width: 1480px; margin: 0 auto; padding: 20px; }
   var layout = "2x2";
   var saving = false;
   var inputs = {}; // "Q1 TL Up" -> input element
+  // Device IDs and Misaligned/Anchor are for the screen only: they are kept in this
+  // browser across entries and are never sent to Notion.
+  var MODES = [["misaligned", "Misaligned"], ["anchor", "Anchor"]];
+  var SETUP_KEY = "quadrant-input-devices-v1";
+  var devInputs = {};
+  var modeGroups = {};
+  var setup = { ids: { 1: "", 2: "", 3: "", 4: "" }, modes: { 1: "misaligned", 2: "misaligned", 3: "misaligned", 4: "misaligned" } };
 
   function today() {
     var d = new Date();
@@ -259,15 +279,45 @@ main { max-width: 1480px; margin: 0 auto; padding: 20px; }
     quad.className = "quad";
     quad.dataset.q = String(q);
     quad.setAttribute("aria-label", "Quadrant " + q);
+    var head = document.createElement("div");
+    head.className = "qhead";
     var h = document.createElement("h2");
-    var ht = document.createElement("span");
-    ht.textContent = "Q" + q;
+    var devLabel = document.createElement("label");
+    devLabel.className = "dev-label";
+    devLabel.htmlFor = "dev-" + q;
+    devLabel.textContent = "Device ID";
+    var dev = document.createElement("input");
+    dev.type = "text";
+    dev.id = "dev-" + q;
+    dev.className = "dev-id";
+    dev.placeholder = "Q" + q;
+    dev.maxLength = 24;
+    dev.autocomplete = "off";
+    dev.spellcheck = false;
+    dev.dataset.q = String(q);
+    devInputs[q] = dev;
+    h.appendChild(devLabel); h.appendChild(dev);
+    var mode = document.createElement("div");
+    mode.className = "mode";
+    mode.setAttribute("role", "group");
+    mode.setAttribute("aria-label", "Quadrant " + q + " mode");
+    modeGroups[q] = [];
+    MODES.forEach(function (m) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.dataset.mode = m[0];
+      b.dataset.q = String(q);
+      b.textContent = m[1];
+      b.setAttribute("aria-pressed", "false");
+      mode.appendChild(b);
+      modeGroups[q].push(b);
+    });
     var hf = document.createElement("span");
     hf.className = "filled";
     hf.dataset.filledFor = String(q);
     hf.textContent = "0 / 16";
-    h.appendChild(ht); h.appendChild(hf);
-    quad.appendChild(h);
+    head.appendChild(h); head.appendChild(mode); head.appendChild(hf);
+    quad.appendChild(head);
     var corners = document.createElement("div");
     corners.className = "corners";
     CORNERS.forEach(function (c) {
@@ -350,6 +400,40 @@ main { max-width: 1480px; margin: 0 auto; padding: 20px; }
     }
   }
 
+  // Device setup (screen only)
+  function quadName(q) { return (setup.ids[q] || "").trim() || ("Q" + q); }
+  function applySetup() {
+    for (var q = 1; q <= 4; q++) {
+      devInputs[q].value = setup.ids[q] || "";
+      modeGroups[q].forEach(function (b) {
+        b.setAttribute("aria-pressed", b.dataset.mode === setup.modes[q] ? "true" : "false");
+      });
+      var quadEl = board.querySelector('.quad[data-q="' + q + '"]');
+      quadEl.setAttribute("aria-label", quadName(q));
+    }
+  }
+  function storeSetup() {
+    try { localStorage.setItem(SETUP_KEY, JSON.stringify(setup)); } catch (e) {}
+  }
+  function loadSetup() {
+    var d = null;
+    try { d = JSON.parse(localStorage.getItem(SETUP_KEY) || "null"); } catch (e) { d = null; }
+    if (d && typeof d === "object") {
+      for (var q = 1; q <= 4; q++) {
+        if (d.ids && typeof d.ids[q] === "string") setup.ids[q] = d.ids[q].slice(0, 24);
+        if (d.modes && (d.modes[q] === "misaligned" || d.modes[q] === "anchor")) setup.modes[q] = d.modes[q];
+      }
+    }
+    applySetup();
+  }
+  board.addEventListener("click", function (e) {
+    var b = e.target.closest(".mode button");
+    if (!b) return;
+    setup.modes[b.dataset.q] = b.dataset.mode;
+    applySetup();
+    storeSetup();
+  });
+
   // Draft persistence (this browser only)
   var draftTimer = null;
   function saveDraft() {
@@ -387,11 +471,20 @@ main { max-width: 1480px; margin: 0 auto; padding: 20px; }
   segBtns.forEach(function (b) {
     b.addEventListener("click", function () { setLayout(b.dataset.layout); saveDraft(); });
   });
-  board.addEventListener("input", function () { updateCounts(); saveDraft(); });
+  board.addEventListener("input", function (e) {
+    if (e.target.classList.contains("dev-id")) {
+      setup.ids[e.target.dataset.q] = e.target.value;
+      board.querySelector('.quad[data-q="' + e.target.dataset.q + '"]').setAttribute("aria-label", quadName(e.target.dataset.q));
+      storeSetup();
+      return;
+    }
+    updateCounts(); saveDraft();
+  });
   board.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && e.target.tagName === "INPUT") {
       e.preventDefault();
-      var all = Array.prototype.slice.call(board.querySelectorAll("input")).filter(function (i) { return i.offsetParent !== null; });
+      if (e.target.classList.contains("dev-id")) { e.target.blur(); return; }
+      var all = Array.prototype.slice.call(board.querySelectorAll(".pad input")).filter(function (i) { return i.offsetParent !== null; });
       var idx = all.indexOf(e.target);
       if (idx > -1 && idx < all.length - 1) all[idx + 1].focus();
     }
@@ -469,6 +562,7 @@ main { max-width: 1480px; margin: 0 auto; padding: 20px; }
       });
   });
 
+  loadSetup();
   loadDraft();
   setLayout(layout);
 })();
