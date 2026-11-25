@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quadrant Input</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #e9edf1;
+  --surface: #f8fafb;
+  --ink: #1b2836;
+  --ink-soft: #566475;
+  --line: #c9d1da;
+  --field: #ffffff;
+  --field-line: #b9c3ce;
+  --focus: #2b62c4;
+  --q1: #2f64b5;
+  --q2: #24877a;
+  --q3: #b07d12;
+  --q4: #7a4b9b;
+  --ok: #1f7a45;
+  --warn: #9a5b00;
+  --err: #b3261e;
+  --btn: #1b2836;
+  --btn-ink: #f8fafb;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131a22; --surface: #1b242f; --ink: #e4eaf0; --ink-soft: #9aa8b7;
+    --line: #2f3b48; --field: #121920; --field-line: #3b4958; --focus: #7ea7ef;
+    --q1: #6d9be0; --q2: #4fb8a9; --q3: #d9a63f; --q4: #a986c6;
+    --ok: #5cc48a; --warn: #e0a54a; --err: #f08b84; --btn: #e4eaf0; --btn-ink: #131a22;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131a22; --surface: #1b242f; --ink: #e4eaf0; --ink-soft: #9aa8b7;
+  --line: #2f3b48; --field: #121920; --field-line: #3b4958; --focus: #7ea7ef;
+  --q1: #6d9be0; --q2: #4fb8a9; --q3: #d9a63f; --q4: #a986c6;
+  --ok: #5cc48a; --warn: #e0a54a; --err: #f08b84; --btn: #e4eaf0; --btn-ink: #131a22;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0; min-height: 100%;
+  background: var(--bg); color: var(--ink);
+  font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px; line-height: 1.45;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 10; background: var(--surface);
+}
+
+/* Header */
+header {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.bar {
+  max-width: 1480px; margin: 0 auto; padding: 14px 20px;
+  display: flex; flex-wrap: wrap; align-items: end; gap: 12px 18px;
+}
+h1 { font-size: 1.15rem; font-weight: 700; margin: 0 8px 4px 0; letter-spacing: -0.01em; white-space: nowrap; }
+.field { display: flex; flex-direction: column; gap: 3px; }
+.field label, .group-label { font-size: 0.78rem; color: var(--ink-soft); font-weight: 500; }
+.field input {
+  font: inherit; color: var(--ink); background: var(--field);
+  border: 1px solid var(--field-line); border-radius: 6px; padding: 7px 10px; min-width: 0;
+}
+#entryName { width: 15rem; max-width: 100%; }
+#entryDate { width: 10.5rem; }
+.seg { display: inline-flex; border: 1px solid var(--field-line); border-radius: 6px; overflow: hidden; }
+.seg button {
+  font: inherit; font-weight: 600; font-variant-numeric: tabular-nums;
+  background: var(--field); color: var(--ink-soft); border: 0; padding: 7px 13px; cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--field-line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.spacer { flex: 1 1 0; }
+.actions { display: flex; gap: 8px; align-items: center; }
+.btn {
+  font: inherit; font-weight: 600; border-radius: 6px; padding: 8px 16px; cursor: pointer;
+  border: 1px solid var(--btn); background: var(--btn); color: var(--btn-ink);
+}
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--field-line); }
+.btn:disabled { opacity: 0.55; cursor: default; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Status line */
+.status {
+  max-width: 1480px; margin: 0 auto; padding: 0 20px 12px;
+  font-size: 0.88rem; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center;
+}
+.status .msg[data-tone="ok"] { color: var(--ok); }
+.status .msg[data-tone="warn"] { color: var(--warn); }
+.status .msg[data-tone="err"] { color: var(--err); }
+.status a { color: var(--focus); }
+
+/* Board */
+main { max-width: 1480px; margin: 0 auto; padding: 20px; }
+.scroller { overflow-x: auto; padding-bottom: 6px; }
+.board { display: grid; gap: 16px; }
+.board[data-layout="2x2"] { grid-template-columns: repeat(2, minmax(330px, 1fr)); max-width: 900px; margin: 0 auto; }
+.board[data-layout="3x1"] { grid-template-columns: repeat(3, minmax(330px, 1fr)); }
+.board[data-layout="4x1"] { grid-template-columns: repeat(4, minmax(330px, 1fr)); }
+.board[data-layout="3x1"] .quad[data-q="4"] { display: none; }
+
+.quad {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  border-top: 4px solid var(--qc); padding: 12px 14px 14px;
+}
+.quad[data-q="1"] { --qc: var(--q1); }
+.quad[data-q="2"] { --qc: var(--q2); }
+.quad[data-q="3"] { --qc: var(--q3); }
+.quad[data-q="4"] { --qc: var(--q4); }
+.quad h2 {
+  margin: 0 0 10px; font-size: 1rem; font-weight: 700; color: var(--qc);
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.quad h2 .filled { font-size: 0.78rem; font-weight: 500; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.corners {
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+  border: 1px dashed var(--line); border-radius: 8px;
+}
+.corner { padding: 10px 6px; display: flex; justify-content: center; }
+.corner:nth-child(odd) { border-right: 1px dashed var(--line); }
+.corner:nth-child(-n+2) { border-bottom: 1px dashed var(--line); }
+
+/* The directional cross: each input sits where its direction points */
+.pad {
+  display: grid; grid-template-columns: repeat(3, 3.1rem); grid-template-rows: repeat(3, 2.3rem);
+  gap: 3px; grid-template-areas: ". up ." "left mid right" ". down .";
+}
+.pad .up { grid-area: up; } .pad .down { grid-area: down; }
+.pad .left { grid-area: left; } .pad .right { grid-area: right; }
+.pad .mid {
+  grid-area: mid; display: grid; place-items: center;
+  font-size: 0.72rem; font-weight: 600; color: var(--ink-soft);
+  border-radius: 50%; border: 1px solid var(--line); width: 2.3rem; height: 2.3rem; justify-self: center;
+}
+.pad input {
+  width: 100%; height: 100%; min-width: 0; text-align: center;
+  font: inherit; font-size: 0.95rem; font-weight: 600; font-variant-numeric: tabular-nums;
+  color: var(--ink); background: var(--field);
+  border: 1px solid var(--field-line); border-radius: 5px; padding: 0 2px;
+  -moz-appearance: textfield;
+}
+.pad input::-webkit-outer-spin-button, .pad input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.pad input::placeholder { color: var(--ink-soft); opacity: 0.55; font-weight: 400; }
+.pad input:not(:placeholder-shown) { border-color: var(--qc); box-shadow: inset 0 -2px 0 var(--qc); }
+.pad input[aria-invalid="true"] { border-color: var(--err); box-shadow: inset 0 -2px 0 var(--err); }
+.pad input:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+.notes { margin-top: 18px; max-width: 900px; }
+.notes textarea {
+  width: 100%; min-height: 4.5rem; font: inherit; color: var(--ink); background: var(--field);
+  border: 1px solid var(--field-line); border-radius: 6px; padding: 8px 10px; resize: vertical;
+}
+.hint { font-size: 0.82rem; color: var(--ink-soft); margin-top: 14px; max-width: 70ch; }
+
+@media (max-width: 720px) {
+  .bar { padding: 12px 14px; }
+  main { padding: 14px; }
+  .board[data-layout] { grid-template-columns: minmax(300px, 1fr); }
+  #entryName { width: 100%; }
+  .field.name { flex: 1 1 100%; }
+  .spacer { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>Quadrant input</h1>
+    <div class="field name">
+      <label for="entryName">Entry name</label>
+      <input id="entryName" type="text" placeholder="e.g. Run 14" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="entryDate">Date</label>
+      <input id="entryDate" type="date">
+    </div>
+    <div class="field">
+      <span class="group-label" id="layoutLabel">Layout</span>
+      <div class="seg" role="group" aria-labelledby="layoutLabel">
+        <button type="button" data-layout="2x2" aria-pressed="true">2x2</button>
+        <button type="button" data-layout="3x1" aria-pressed="false">3x1</button>
+        <button type="button" data-layout="4x1" aria-pressed="false">4x1</button>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button type="button" class="btn ghost" id="clearBtn">Clear</button>
+      <button type="button" class="btn" id="saveBtn">Save to Notion</button>
+    </div>
+  </div>
+  <div class="status">
+    <span id="count">0 of 64 values filled</span>
+    <span class="msg" id="msg" role="status" aria-live="polite"></span>
+    <a id="logLink" href="https://app.notion.com/p/4233e583ce7281ecaaaac53a20f3c9f2" target="_blank" rel="noopener">Open log in Notion</a>
+  </div>
+</header>
+
+<main>
+  <div class="scroller">
+    <div class="board" id="board" data-layout="2x2"></div>
+  </div>
+  <div class="notes field">
+    <label for="notes">Notes</label>
+    <textarea id="notes" placeholder="Optional"></textarea>
+  </div>
+  <p class="hint">Each corner has four boxes laid out the way they point: up on top, down below, left and right on the sides. Leave a box empty to skip it. Your unsaved entry is kept in this browser until you save or clear it.</p>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  // ---- SETUP: paste your Make or Zapier webhook URL between the quotes ----
+  var WEBHOOK_URL = "";
+  // --------------------------------------------------------------------------
+  var CORNERS = [["TL", "Top left"], ["TR", "Top right"], ["BL", "Bottom left"], ["BR", "Bottom right"]];
+  var DIRS = [["Up", "up", "\u2191"], ["Down", "down", "\u2193"], ["Left", "left", "\u2190"], ["Right", "right", "\u2192"]];
+  var DRAFT_KEY = "quadrant-input-draft-v1";
+
+  var board = document.getElementById("board");
+  var nameEl = document.getElementById("entryName");
+  var dateEl = document.getElementById("entryDate");
+  var notesEl = document.getElementById("notes");
+  var saveBtn = document.getElementById("saveBtn");
+  var clearBtn = document.getElementById("clearBtn");
+  var msgEl = document.getElementById("msg");
+  var countEl = document.getElementById("count");
+  var segBtns = Array.prototype.slice.call(document.querySelectorAll(".seg button"));
+
+  var layout = "2x2";
+  var saving = false;
+  var inputs = {}; // "Q1 TL Up" -> input element
+
+  function today() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+
+  // Build the board
+  for (var q = 1; q <= 4; q++) {
+    var quad = document.createElement("section");
+    quad.className = "quad";
+    quad.dataset.q = String(q);
+    quad.setAttribute("aria-label", "Quadrant " + q);
+    var h = document.createElement("h2");
+    var ht = document.createElement("span");
+    ht.textContent = "Q" + q;
+    var hf = document.createElement("span");
+    hf.className = "filled";
+    hf.dataset.filledFor = String(q);
+    hf.textContent = "0 / 16";
+    h.appendChild(ht); h.appendChild(hf);
+    quad.appendChild(h);
+    var corners = document.createElement("div");
+    corners.className = "corners";
+    CORNERS.forEach(function (c) {
+      var cell = document.createElement("div");
+      cell.className = "corner";
+      var pad = document.createElement("div");
+      pad.className = "pad";
+      pad.setAttribute("role", "group");
+      pad.setAttribute("aria-label", "Q" + q + " " + c[1].toLowerCase());
+      DIRS.forEach(function (d) {
+        var key = "Q" + q + " " + c[0] + " " + d[0];
+        var inp = document.createElement("input");
+        inp.type = "text";
+        inp.inputMode = "decimal";
+        inp.className = d[1];
+        inp.placeholder = d[2];
+        inp.autocomplete = "off";
+        inp.setAttribute("aria-label", "Q" + q + " " + c[1].toLowerCase() + ", " + d[1]);
+        inp.title = "Q" + q + " " + c[1].toLowerCase() + ", " + d[1];
+        inp.dataset.key = key;
+        inp.dataset.q = String(q);
+        inputs[key] = inp;
+        pad.appendChild(inp);
+      });
+      var mid = document.createElement("div");
+      mid.className = "mid";
+      mid.textContent = c[0];
+      mid.setAttribute("aria-hidden", "true");
+      pad.appendChild(mid);
+      cell.appendChild(pad);
+      corners.appendChild(cell);
+    });
+    quad.appendChild(corners);
+    board.appendChild(quad);
+  }
+
+  function activeQuads() { return layout === "3x1" ? 3 : 4; }
+
+  function parseVal(raw) {
+    var s = String(raw).trim().replace(/,/g, "");
+    if (s === "") return { empty: true };
+    if (!/^[-+]?(\d+\.?\d*|\.\d+)$/.test(s)) return { bad: true };
+    return { value: Number(s) };
+  }
+
+  function updateCounts() {
+    var total = 0, perQ = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    Object.keys(inputs).forEach(function (k) {
+      var inp = inputs[k];
+      var p = parseVal(inp.value);
+      inp.setAttribute("aria-invalid", p.bad ? "true" : "false");
+      if (!p.empty) perQ[inp.dataset.q]++;
+    });
+    var n = activeQuads();
+    for (var i = 1; i <= 4; i++) {
+      var el = board.querySelector('[data-filled-for="' + i + '"]');
+      el.textContent = perQ[i] + " / 16";
+      if (i <= n) total += perQ[i];
+    }
+    countEl.textContent = total + " of " + (n * 16) + " values filled";
+  }
+
+  function setLayout(l) {
+    layout = l;
+    board.dataset.layout = l;
+    segBtns.forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.layout === l ? "true" : "false"); });
+    updateCounts();
+  }
+
+  function setMsg(text, tone, link) {
+    msgEl.textContent = "";
+    msgEl.dataset.tone = tone || "";
+    if (text) msgEl.appendChild(document.createTextNode(text));
+    if (link && /^https:\/\//.test(link.href)) {
+      msgEl.appendChild(document.createTextNode(" "));
+      var a = document.createElement("a");
+      a.href = link.href; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = link.text;
+      msgEl.appendChild(a);
+    }
+  }
+
+  // Draft persistence (this browser only)
+  var draftTimer = null;
+  function saveDraft() {
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(function () {
+      var values = {};
+      Object.keys(inputs).forEach(function (k) { if (inputs[k].value !== "") values[k] = inputs[k].value; });
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          layout: layout, name: nameEl.value, date: dateEl.value, notes: notesEl.value, values: values
+        }));
+      } catch (e) {}
+    }, 300);
+  }
+  function loadDraft() {
+    var d = null;
+    try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { d = null; }
+    if (!d || typeof d !== "object") { dateEl.value = today(); return; }
+    nameEl.value = typeof d.name === "string" ? d.name : "";
+    dateEl.value = typeof d.date === "string" && d.date ? d.date : today();
+    notesEl.value = typeof d.notes === "string" ? d.notes : "";
+    if (d.values && typeof d.values === "object") {
+      Object.keys(d.values).forEach(function (k) { if (inputs[k]) inputs[k].value = String(d.values[k]); });
+    }
+    if (d.layout === "2x2" || d.layout === "3x1" || d.layout === "4x1") layout = d.layout;
+  }
+  function clearAll() {
+    Object.keys(inputs).forEach(function (k) { inputs[k].value = ""; });
+    nameEl.value = ""; notesEl.value = ""; dateEl.value = today();
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+    updateCounts();
+  }
+
+  // Events
+  segBtns.forEach(function (b) {
+    b.addEventListener("click", function () { setLayout(b.dataset.layout); saveDraft(); });
+  });
+  board.addEventListener("input", function () { updateCounts(); saveDraft(); });
+  board.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && e.target.tagName === "INPUT") {
+      e.preventDefault();
+      var all = Array.prototype.slice.call(board.querySelectorAll("input")).filter(function (i) { return i.offsetParent !== null; });
+      var idx = all.indexOf(e.target);
+      if (idx > -1 && idx < all.length - 1) all[idx + 1].focus();
+    }
+  });
+  [nameEl, dateEl, notesEl].forEach(function (el) { el.addEventListener("input", saveDraft); });
+  clearBtn.addEventListener("click", function () {
+    var hasAny = Object.keys(inputs).some(function (k) { return inputs[k].value !== ""; });
+    if (hasAny && !window.confirm("Clear every value in this entry?")) return;
+    clearAll();
+    setMsg("", "");
+  });
+
+  function textProp(str) {
+    return [{ type: "text", text: { content: String(str).slice(0, 2000) } }];
+  }
+
+  saveBtn.addEventListener("click", function () {
+    if (saving) return;
+    if (!/^https:\/\//.test(WEBHOOK_URL)) {
+      setMsg("This page isn\u2019t connected yet. Paste your webhook URL into the WEBHOOK_URL line of the file.", "err");
+      return;
+    }
+    var n = activeQuads();
+    var props = {};
+    var bad = [];
+    var filled = 0;
+    for (var q = 1; q <= n; q++) {
+      CORNERS.forEach(function (c) {
+        DIRS.forEach(function (d) {
+          var key = "Q" + q + " " + c[0] + " " + d[0];
+          var p = parseVal(inputs[key].value);
+          if (p.bad) bad.push(inputs[key]);
+          else if (!p.empty) { props[key] = { number: p.value }; filled++; }
+        });
+      });
+    }
+    if (bad.length) {
+      setMsg(bad.length === 1 ? "One box isn\u2019t a number. Fix the box outlined in red." : bad.length + " boxes aren\u2019t numbers. Fix the boxes outlined in red.", "err");
+      bad[0].focus();
+      return;
+    }
+    if (filled === 0) {
+      setMsg("Enter at least one value before saving.", "warn");
+      return;
+    }
+    var date = dateEl.value || today();
+    var name = nameEl.value.trim() || ("Entry " + date);
+    props["Name"] = { title: textProp(name) };
+    props["Layout"] = { select: { name: layout } };
+    props["Date"] = { date: { start: date } };
+    if (notesEl.value.trim()) props["Notes"] = { rich_text: textProp(notesEl.value.trim()) };
+
+    saving = true;
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving\u2026";
+    setMsg("Sending\u2026", "");
+
+    var body = new URLSearchParams();
+    body.set("properties", JSON.stringify(props));
+
+    // Sent as a plain form post so Make and Zapier accept it from any page.
+    // The relay's reply can't be read back, so a resolved request means "delivered to the relay".
+    fetch(WEBHOOK_URL, { method: "POST", mode: "no-cors", body: body })
+      .then(function () {
+        clearAll();
+        setMsg("Sent \u201c" + name + "\u201d. It appears in the log within a few seconds.", "ok");
+      })
+      .catch(function () {
+        setMsg("Couldn\u2019t reach the relay. Check your internet connection and save again. Your values are still here.", "err");
+      })
+      .then(function () {
+        saving = false;
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save to Notion";
+      });
+  });
+
+  loadDraft();
+  setLayout(layout);
+})();
+</script>
+</body>
+</html>
